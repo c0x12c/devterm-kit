@@ -63,7 +63,7 @@ pick_theme() {
   echo -e "  ${MOCHA_BLUE}3)${NC} Frappé     — Medium dark"
   echo -e "  ${MOCHA_BLUE}4)${NC} Latte      — Light (for bright environments)"
   echo ""
-  read -r -p "  Your choice [1-4, default: 1]: " choice
+  read -r -p "  Your choice [1-4, default: 1]: " choice < /dev/tty
 
   case "${choice:-1}" in
     1) DEVTERM_THEME="mocha" ;;

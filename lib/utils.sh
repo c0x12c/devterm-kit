@@ -84,10 +84,10 @@ confirm() {
   local default="${2:-y}"
 
   if [[ "$default" == "y" ]]; then
-    read -r -p "  $prompt [Y/n] " response
+    read -r -p "  $prompt [Y/n] " response < /dev/tty
     response="${response:-y}"
   else
-    read -r -p "  $prompt [y/N] " response
+    read -r -p "  $prompt [y/N] " response < /dev/tty
     response="${response:-n}"
   fi
 
