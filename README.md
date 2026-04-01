@@ -98,8 +98,24 @@ The selected flavor is applied to both the Starship prompt config and the iTerm2
   --minimal            Skip CLI tools (fzf, eza, bat, zoxide)
   --non-interactive    No prompts, use defaults
   --doctor             Check your devterm setup for issues
+  --tips               Show cheat sheet — what changed and how to use everything
   -h, --help           Show help
   -v, --version        Show version
+```
+
+---
+
+## The `devterm` Command
+
+After installation, a `devterm` command is available in your shell:
+
+```bash
+devterm tips       # Cheat sheet — what changed and how to use each tool
+devterm doctor     # Health check — diagnose your setup
+devterm update     # Pull latest version from GitHub
+devterm restore    # Restore your previous ~/.zshrc from backup
+devterm version    # Show installed version
+devterm help       # Show all commands
 ```
 
 ---
@@ -194,8 +210,8 @@ All checks passed.
 devterm doesn't install a daemon or background process. To revert:
 
 ```bash
-# Restore your previous .zshrc
-cp ~/.zshrc.backup.* ~/.zshrc   # use the most recent backup
+# Restore your previous .zshrc (interactive picker)
+devterm restore
 
 # Remove installed components (optional)
 brew uninstall fzf eza bat zoxide starship   # macOS
@@ -218,7 +234,6 @@ Good places to start:
 
 - [ ] Add [Ghostty](https://ghostty.org) terminal color scheme support
 - [ ] Add [WezTerm](https://wezfurlong.org/wezterm/) config generation
-- [ ] Add `--update` flag to pull latest devterm changes
 - [ ] Fish shell support
 - [ ] Windows WSL2 support
 
