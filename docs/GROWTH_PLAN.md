@@ -166,7 +166,7 @@ I built devterm because I was tired of spending hours setting up a new machine's
 [demo GIF here]
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash
 ```
 
 GitHub: https://github.com/c0x12c/devterm-kit

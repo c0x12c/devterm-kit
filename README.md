@@ -17,7 +17,7 @@
 ---
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash
 ```
 
 ---
@@ -36,7 +36,7 @@ Works on **macOS** (Homebrew) and **Linux** (apt / pacman / dnf).
 
 **One-liner (recommended):**
 ```bash
-curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash
 ```
 
 **Or clone and run:**

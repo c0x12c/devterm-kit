@@ -170,7 +170,7 @@ Vào **Releases** → **Draft a new release**:
 ## One-liner install
 
 \`\`\`bash
-curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash
 \`\`\`
 ```
 
@@ -210,7 +210,7 @@ I built devterm because I was tired of spending hours setting up a new machine's
 [PASTE GIF HERE]
 
 \```bash
-curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash
 \```
 
 GitHub: https://github.com/c0x12c/devterm-kit

@@ -3,8 +3,8 @@
 # devterm installer — one-liner entry point
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/main/install.sh | bash
-#   curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/main/install.sh | bash -s -- --theme macchiato
+#   curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash -s -- --theme macchiato
 # =============================================================================
 
 set -euo pipefail
