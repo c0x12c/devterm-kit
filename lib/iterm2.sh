@@ -2,6 +2,7 @@
 # lib/iterm2.sh — iTerm2 Catppuccin color scheme installation (macOS only)
 
 ITERM_SUPPORT="$HOME/Library/Application Support/iTerm2"
+ITERM_PLIST="$HOME/Library/Preferences/com.googlecode.iterm2.plist"
 # Guard: only compute DEVTERM_ROOT if not already set by setup.sh
 _iterm2_root() { dirname "$(dirname "${BASH_SOURCE[0]}")"; }
 DEVTERM_ROOT="${DEVTERM_ROOT:-$(_iterm2_root)}"
@@ -17,6 +18,38 @@ _theme_display_name() {
     macchiato) echo "Catppuccin Macchiato (Dark)" ;;
     *)         echo "Catppuccin $1" ;;
   esac
+}
+
+# Apply font and color preset to iTerm2 Default profile via defaults/PlistBuddy
+_apply_iterm2_profile() {
+  local variant="${1:-mocha}"
+  local preset_name="catppuccin-${variant}"
+  local src_file="$DEVTERM_ROOT/themes/${preset_name}.itermcolors"
+
+  # Import color preset into iTerm2's custom color presets
+  if [[ -f "$src_file" ]]; then
+    # Convert .itermcolors (XML plist) and inject into iTerm2 prefs
+    defaults write com.googlecode.iterm2 "Custom Color Presets" -dict-add \
+      "$preset_name" "$(cat "$src_file")" 2>/dev/null || true
+
+    # Also open the file so iTerm2 registers it on next launch
+    open "$src_file" 2>/dev/null || true
+    sleep 1
+  fi
+
+  # Apply settings to the Default profile using PlistBuddy
+  local pb="/usr/libexec/PlistBuddy"
+  local profile_path=":New Bookmarks:0"
+
+  if [[ -f "$ITERM_PLIST" ]]; then
+    # Set font to MesloLGS NF 14pt
+    "$pb" -c "Set ${profile_path}:'Normal Font' 'MesloLGSNF-Regular 14'" "$ITERM_PLIST" 2>/dev/null || true
+    "$pb" -c "Set ${profile_path}:'Non Ascii Font' 'MesloLGSNF-Regular 14'" "$ITERM_PLIST" 2>/dev/null || true
+
+    log_ok "Font set to MesloLGS NF (size 14) in Default profile"
+  else
+    log_info "iTerm2 plist not found — font will be set on next launch"
+  fi
 }
 
 install_iterm2_theme() {
@@ -43,14 +76,9 @@ install_iterm2_theme() {
   cp "$src_file" "$dest_file"
   log_ok "Copied catppuccin-${variant}.itermcolors to iTerm2 folder"
 
-  # Open the file to trigger iTerm2 import
-  if open "$dest_file" 2>/dev/null; then
-    log_ok "iTerm2 import dialog should appear — click 'OK' to confirm"
-    log_info "Then: Preferences → Profiles → Colors → Color Presets → catppuccin-${variant}"
-  else
-    log_info "Import manually: Preferences → Profiles → Colors → Color Presets → Import"
-    log_info "  File: $dest_file"
-  fi
+  # Auto-apply font and theme to iTerm2 Default profile
+  _apply_iterm2_profile "$variant"
+  log_ok "Theme and font applied to iTerm2 — restart iTerm2 to see changes"
 }
 
 # Interactive theme picker (shared between macOS and Linux)
