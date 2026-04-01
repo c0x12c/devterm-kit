@@ -108,21 +108,14 @@ The selected flavor is applied to both the Starship prompt config and the iTerm2
 
 **macOS (iTerm2):**
 
-1. Set the font:
-   ```
-   iTerm2 → Preferences (⌘,) → Profiles → Text → Font: "MesloLGS NF"  Size: 14
-   ```
+Font (MesloLGS NF) and color scheme (Catppuccin) are applied automatically to your iTerm2 Default profile. Just:
 
-2. Apply the color scheme:
-   ```
-   iTerm2 → Preferences → Profiles → Colors → Color Presets → catppuccin-mocha
-   ```
-
-3. Quit and reopen iTerm2 (Cmd+Q — not just close the window)
+1. Quit iTerm2 completely (Cmd+Q — not just close the window)
+2. Reopen iTerm2
 
 **Linux:**
 
-The Starship prompt is active immediately. For the color theme, visit [catppuccin.com](https://github.com/catppuccin) and find your terminal emulator (Alacritty, Kitty, GNOME Terminal, etc.).
+The Starship prompt is active immediately. Set your terminal font to `MesloLGS NF` manually. For the color theme, visit [catppuccin.com](https://github.com/catppuccin) and find your terminal emulator (Alacritty, Kitty, GNOME Terminal, etc.).
 
 ---
 
