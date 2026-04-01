@@ -1,0 +1,170 @@
+# =============================================================================
+# devterm — Starship config: Catppuccin Latte (light)
+# https://github.com/catppuccin/starship
+# =============================================================================
+
+"$schema" = "https://starship.rs/config-schema.json"
+
+palette = "catppuccin_latte"
+
+format = """
+[](surface0)\
+$os\
+$directory\
+[](fg:surface0 bg:surface1)\
+$git_branch\
+$git_status\
+[](fg:surface1 bg:surface2)\
+$c\
+$rust\
+$golang\
+$nodejs\
+$python\
+$java\
+$kotlin\
+[](fg:surface2)\
+$fill\
+$cmd_duration\
+$time\
+$line_break\
+$character"""
+
+add_newline = true
+
+[fill]
+symbol = " "
+
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol   = "[❯](bold red)"
+vimcmd_symbol  = "[❮](bold green)"
+
+[directory]
+style                    = "bold fg:blue bg:surface0"
+format                   = "[ $path ]($style)"
+truncation_length        = 4
+truncate_to_repo         = true
+truncation_symbol        = "…/"
+read_only                = " 󰌾"
+read_only_style          = "red bg:surface0"
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music"     = "󰝚 "
+"Pictures"  = " "
+"Developer" = "󰲋 "
+
+[git_branch]
+symbol    = " "
+style     = "bold fg:mauve bg:surface1"
+format    = "[ $symbol$branch(:$remote_branch) ]($style)"
+
+[git_status]
+style     = "bold fg:peach bg:surface1"
+format    = "[$all_status$ahead_behind ]($style)"
+conflicted = "⚡"
+ahead      = "⇡${count}"
+behind     = "⇣${count}"
+diverged   = "⇕⇡${ahead_count}⇣${behind_count}"
+untracked  = "?${count}"
+stashed    = "󰏗 "
+modified   = "!${count}"
+staged     = "+${count}"
+renamed    = "»${count}"
+deleted    = "✘${count}"
+
+[cmd_duration]
+min_time           = 3_000
+style              = "fg:yellow"
+format             = "[ 󱎫 $duration ]($style)"
+show_milliseconds  = false
+
+[time]
+disabled    = false
+style       = "fg:overlay1"
+format      = "[ 󰥔 $time ]($style)"
+time_format = "%H:%M"
+use_12hr    = false
+
+[os]
+disabled = false
+style    = "fg:text bg:surface0"
+
+[os.symbols]
+Macos   = "  "
+Ubuntu  = "  "
+Debian  = "  "
+Arch    = "  "
+Windows = "  "
+Linux   = "  "
+
+[nodejs]
+symbol         = "  "
+style          = "bold fg:green bg:surface2"
+format         = "[ $symbol($version) ]($style)"
+detect_files   = ["package.json", ".node-version"]
+detect_folders = ["node_modules"]
+
+[python]
+symbol         = "  "
+style          = "bold fg:yellow bg:surface2"
+format         = "[ $symbol($version)(\\($virtualenv\\)) ]($style)"
+detect_files   = ["requirements.txt", "pyproject.toml", "setup.py", ".python-version", "Pipfile"]
+
+[java]
+symbol         = "  "
+style          = "bold fg:red bg:surface2"
+format         = "[ $symbol($version) ]($style)"
+detect_files   = ["pom.xml", "build.gradle", "build.gradle.kts", "*.java"]
+
+[kotlin]
+symbol         = "  "
+style          = "bold fg:mauve bg:surface2"
+format         = "[ $symbol($version) ]($style)"
+detect_files   = ["*.kt", "*.kts", "build.gradle.kts"]
+
+[golang]
+symbol         = "  "
+style          = "bold fg:sky bg:surface2"
+format         = "[ $symbol($version) ]($style)"
+detect_files   = ["go.mod", "go.sum"]
+
+[rust]
+symbol         = "  "
+style          = "bold fg:peach bg:surface2"
+format         = "[ $symbol($version) ]($style)"
+detect_files   = ["Cargo.toml"]
+
+[c]
+symbol         = "  "
+style          = "bold fg:sapphire bg:surface2"
+format         = "[ $symbol($version(-$name)) ]($style)"
+
+[palettes.catppuccin_latte]
+rosewater = "#dc8a78"
+flamingo  = "#dd7878"
+pink      = "#ea76cb"
+mauve     = "#8839ef"
+red       = "#d20f39"
+maroon    = "#e64553"
+peach     = "#fe640b"
+yellow    = "#df8e1d"
+green     = "#40a02b"
+teal      = "#179299"
+sky       = "#04a5e5"
+sapphire  = "#209fb5"
+blue      = "#1e66f5"
+lavender  = "#7287fd"
+text      = "#4c4f69"
+subtext1  = "#5c5f77"
+subtext0  = "#6c6f85"
+overlay2  = "#7c7f93"
+overlay1  = "#8c8fa1"
+overlay0  = "#9ca0b0"
+surface2  = "#acb0be"
+surface1  = "#bcc0cc"
+surface0  = "#ccd0da"
+base      = "#eff1f5"
+mantle    = "#e6e9ef"
+crust     = "#dce0e8"

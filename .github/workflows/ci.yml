@@ -1,0 +1,169 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on all scripts
+        run: |
+          # Exclude deprecated p10k stub
+          shellcheck install.sh setup.sh \
+            lib/utils.sh lib/detect.sh lib/fonts.sh lib/shell.sh \
+            lib/starship.sh lib/plugins.sh lib/tools.sh \
+            lib/iterm2.sh lib/zshrc.sh lib/doctor.sh
+          echo "✓ All scripts passed ShellCheck"
+
+  syntax-check:
+    name: Bash Syntax Check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check bash syntax on all active scripts
+        run: |
+          # Keep this list in sync with the shellcheck job
+          SCRIPTS=(
+            install.sh setup.sh
+            lib/utils.sh lib/detect.sh lib/fonts.sh lib/shell.sh
+            lib/starship.sh lib/plugins.sh lib/tools.sh
+            lib/iterm2.sh lib/zshrc.sh lib/doctor.sh
+          )
+          for f in "${SCRIPTS[@]}"; do
+            bash -n "$f" && echo "✓ $f" || exit 1
+          done
+
+      - name: Verify iTerm2 theme files exist
+        run: |
+          for theme in mocha latte frappe macchiato; do
+            [[ -f "themes/catppuccin-${theme}.itermcolors" ]] \
+              && echo "✓ themes/catppuccin-${theme}.itermcolors" \
+              || { echo "✗ Missing: catppuccin-${theme}.itermcolors"; exit 1; }
+          done
+
+      - name: Verify iTerm2 theme files are valid XML
+        run: |
+          for f in themes/*.itermcolors; do
+            plutil -lint "$f" && echo "✓ $f" || exit 1
+          done
+
+      - name: Verify Starship configs exist for all 4 flavors
+        run: |
+          for flavor in mocha latte frappe macchiato; do
+            [[ -f "config/starship-${flavor}.toml" ]] \
+              && echo "✓ config/starship-${flavor}.toml" \
+              || { echo "✗ Missing: config/starship-${flavor}.toml"; exit 1; }
+          done
+
+  validate-structure:
+    name: Validate Project Structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          REQUIRED=(
+            "install.sh"
+            "setup.sh"
+            "README.md"
+            "LICENSE"
+            "CONTRIBUTING.md"
+            "lib/utils.sh"
+            "lib/detect.sh"
+            "lib/fonts.sh"
+            "lib/shell.sh"
+            "lib/starship.sh"
+            "lib/plugins.sh"
+            "lib/tools.sh"
+            "lib/iterm2.sh"
+            "lib/zshrc.sh"
+            "lib/doctor.sh"
+            "config/starship-mocha.toml"
+            "config/starship-latte.toml"
+            "config/starship-frappe.toml"
+            "config/starship-macchiato.toml"
+            "themes/catppuccin-mocha.itermcolors"
+            "themes/catppuccin-latte.itermcolors"
+            "themes/catppuccin-frappe.itermcolors"
+            "themes/catppuccin-macchiato.itermcolors"
+          )
+          for f in "${REQUIRED[@]}"; do
+            [[ -f "$f" ]] && echo "✓ $f" || { echo "✗ Missing: $f"; exit 1; }
+          done
+
+      - name: Verify Starship configs declare correct palettes
+        run: |
+          for flavor in mocha latte frappe macchiato; do
+            grep -q "palette = \"catppuccin_${flavor}\"" "config/starship-${flavor}.toml" \
+              && echo "✓ starship-${flavor}.toml palette OK" \
+              || { echo "✗ Wrong palette in starship-${flavor}.toml"; exit 1; }
+          done
+
+      - name: Ensure p10k is not sourced in setup.sh
+        run: |
+          if grep -q "source.*p10k" setup.sh; then
+            echo "✗ setup.sh still sources p10k — migration incomplete"
+            exit 1
+          fi
+          echo "✓ p10k not sourced in setup.sh"
+
+      - name: Ensure no placeholder URLs in lib/ scripts
+        run: |
+          if grep -rl "yourusername" lib/; then
+            echo "✗ Found 'yourusername' placeholder in lib/ — update before merging"
+            exit 1
+          fi
+          echo "✓ No placeholder URLs in lib/"
+
+      - name: Ensure zshrc uses Starship (not p10k theme)
+        run: |
+          if grep -q 'ZSH_THEME="powerlevel10k' lib/zshrc.sh; then
+            echo "✗ lib/zshrc.sh still sets powerlevel10k theme"
+            exit 1
+          fi
+          grep -q "starship init zsh" lib/zshrc.sh \
+            && echo "✓ lib/zshrc.sh uses Starship" \
+            || { echo "✗ lib/zshrc.sh missing starship init"; exit 1; }
+
+  unit-tests:
+    name: BATS Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y bats
+          bats --version
+
+      - name: Run unit tests — utils
+        run: bats tests/test_utils.bats
+
+      - name: Run unit tests — zshrc generation
+        run: bats tests/test_zshrc.bats
+
+      - name: Run unit tests — project structure
+        run: bats tests/test_structure.bats
+
+      - name: Run unit tests — Starship config
+        run: bats tests/test_starship.bats
+
+      - name: Run unit tests — doctor
+        run: bats tests/test_doctor.bats
+
+      - name: Test summary
+        if: always()
+        run: echo "✓ All BATS tests complete"
