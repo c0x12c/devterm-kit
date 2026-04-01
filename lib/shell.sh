@@ -6,9 +6,13 @@ install_zsh() {
 
   # Install zsh if missing
   if ! command_exists zsh; then
-    log_info "Installing zsh via Homebrew..."
-    brew install zsh
-    log_ok "Zsh installed"
+    log_info "Installing zsh..."
+    if _install_pkg zsh; then
+      log_ok "Zsh installed"
+    else
+      log_error "Failed to install zsh"
+      return 1
+    fi
   else
     log_skip "Zsh $(zsh --version | awk '{print $2}')"
   fi

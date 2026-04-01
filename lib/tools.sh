@@ -20,13 +20,13 @@ _install_brew_tool() {
   local pkg="$1"
   local desc="$2"
 
-  if brew_installed "$pkg"; then
+  if command_exists "$pkg"; then
     log_skip "$pkg ($desc)"
     return 0
   fi
 
   log_info "Installing $pkg — $desc..."
-  if brew install "$pkg" &>/dev/null; then
+  if _install_pkg "$pkg" &>/dev/null; then
     log_ok "$pkg installed"
   else
     log_error "Failed to install $pkg"
@@ -35,10 +35,22 @@ _install_brew_tool() {
 }
 
 _setup_fzf() {
-  local fzf_install
-  fzf_install="$(brew --prefix)/opt/fzf/install"
+  local fzf_install=""
 
-  if [[ -f "$fzf_install" ]]; then
+  # Find fzf install script — location varies by OS/package manager
+  if command_exists brew; then
+    fzf_install="$(brew --prefix)/opt/fzf/install"
+  elif [[ -f "/usr/share/doc/fzf/examples/key-bindings.zsh" ]]; then
+    # Debian/Ubuntu: fzf ships key bindings as example files, no install script needed
+    log_ok "fzf key bindings available via system package"
+    return 0
+  elif [[ -f "/usr/share/fzf/key-bindings.zsh" ]]; then
+    # Arch/Fedora: fzf ships key bindings here
+    log_ok "fzf key bindings available via system package"
+    return 0
+  fi
+
+  if [[ -n "$fzf_install" ]] && [[ -f "$fzf_install" ]]; then
     # Non-interactive: install bindings without modifying rc files (we do that in zshrc.sh)
     "$fzf_install" --key-bindings --completion --no-update-rc 2>/dev/null
     log_ok "fzf key bindings configured (Ctrl+R history, Ctrl+T files, Alt+C dirs)"

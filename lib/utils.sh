@@ -73,6 +73,25 @@ brew_installed() {
   brew list "$1" &>/dev/null 2>&1
 }
 
+# Install a package using the detected package manager (cross-platform)
+# Requires DEVTERM_OS and PKGMGR to be set by detect_system()
+_install_pkg() {
+  local pkg="$1"
+
+  if [[ "${DEVTERM_OS:-}" == "macos" ]]; then
+    brew install "$pkg"
+  elif [[ "${PKGMGR:-}" == "apt" ]]; then
+    sudo apt-get install -y "$pkg"
+  elif [[ "${PKGMGR:-}" == "pacman" ]]; then
+    sudo pacman -S --noconfirm "$pkg"
+  elif [[ "${PKGMGR:-}" == "dnf" ]]; then
+    sudo dnf install -y "$pkg"
+  else
+    log_error "No supported package manager found. Install '$pkg' manually."
+    return 1
+  fi
+}
+
 # Check if a directory exists and is non-empty
 dir_exists() {
   [[ -d "$1" ]] && [[ -n "$(ls -A "$1" 2>/dev/null)" ]]

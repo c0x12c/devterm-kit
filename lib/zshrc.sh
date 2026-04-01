@@ -168,6 +168,129 @@ if [[ "\$(uname)" == "Darwin" ]]; then
 fi
 
 # =============================================================================
+# devterm update check — silent, cached 24h, background
+# =============================================================================
+_devterm_update_check() {
+  local DEVTERM_DIR="\${DEVTERM_DIR:-\$HOME/.devterm}"
+  local cache_file="\$HOME/.cache/devterm-update-check"
+  local cache_max=86400  # 24 hours
+
+  # Skip if no devterm install or no git
+  [[ -f "\$DEVTERM_DIR/VERSION" ]] || return 0
+  command -v git &>/dev/null || return 0
+
+  # Skip if cache is fresh
+  if [[ -f "\$cache_file" ]]; then
+    local now cache_mtime age
+    now=\$(date +%s)
+    if [[ "\$(uname)" == "Darwin" ]]; then
+      cache_mtime=\$(stat -f %m "\$cache_file" 2>/dev/null || echo 0)
+    else
+      cache_mtime=\$(stat -c %Y "\$cache_file" 2>/dev/null || echo 0)
+    fi
+    age=\$((now - cache_mtime))
+    [[ \$age -lt \$cache_max ]] && return 0
+  fi
+
+  # Run check in background — never block shell startup
+  (
+    mkdir -p "\$HOME/.cache"
+    local local_ver remote_ver
+    local_ver=\$(cat "\$DEVTERM_DIR/VERSION" 2>/dev/null)
+    remote_ver=\$(git -C "\$DEVTERM_DIR" ls-remote --tags origin 2>/dev/null \
+      | awk '{print \$2}' | sed 's|refs/tags/v||' | sort -V | tail -1)
+
+    # Write cache regardless — prevents re-checking on failure
+    echo "\$remote_ver" > "\$cache_file" 2>/dev/null
+
+    if [[ -n "\$remote_ver" && "\$remote_ver" != "\$local_ver" ]]; then
+      # Compare versions: only notify if remote is newer
+      local higher
+      higher=\$(printf '%s\n%s' "\$local_ver" "\$remote_ver" | sort -V | tail -1)
+      if [[ "\$higher" == "\$remote_ver" && "\$higher" != "\$local_ver" ]]; then
+        echo "\$remote_ver" > "\$cache_file"
+      else
+        echo "" > "\$cache_file"
+      fi
+    else
+      echo "" > "\$cache_file"
+    fi
+  ) &>/dev/null &
+  disown
+
+  # Show notification from previous check
+  if [[ -f "\$cache_file" ]]; then
+    local cached_ver
+    cached_ver=\$(cat "\$cache_file" 2>/dev/null)
+    if [[ -n "\$cached_ver" ]]; then
+      local local_ver
+      local_ver=\$(cat "\$DEVTERM_DIR/VERSION" 2>/dev/null)
+      echo "  ⬆ devterm \$cached_ver available (current: \$local_ver) — run 'devterm update'"
+    fi
+  fi
+}
+_devterm_update_check
+
+# =============================================================================
+# devterm CLI — run 'devterm tips', 'devterm doctor', 'devterm update'
+# =============================================================================
+devterm() {
+  local DEVTERM_DIR="\${DEVTERM_DIR:-\$HOME/.devterm}"
+
+  case "\${1:-}" in
+    tips|cheatsheet)
+      if [[ -f "\$DEVTERM_DIR/lib/tips.sh" ]]; then
+        source "\$DEVTERM_DIR/lib/tips.sh" && show_tips
+      else
+        echo "devterm not found at \$DEVTERM_DIR — reinstall with:"
+        echo "  curl -fsSL https://raw.githubusercontent.com/c0x12c/devterm-kit/master/install.sh | bash"
+      fi
+      ;;
+    doctor)
+      if [[ -f "\$DEVTERM_DIR/setup.sh" ]]; then
+        bash "\$DEVTERM_DIR/setup.sh" --doctor
+      else
+        echo "devterm not found at \$DEVTERM_DIR"
+      fi
+      ;;
+    update)
+      if [[ -f "\$DEVTERM_DIR/setup.sh" ]]; then
+        local old_ver new_ver
+        old_ver=\$(cat "\$DEVTERM_DIR/VERSION" 2>/dev/null || echo "?")
+        (cd "\$DEVTERM_DIR" && git fetch --quiet origin && git reset --hard origin/master --quiet) || { echo "Update failed"; return 1; }
+        new_ver=\$(cat "\$DEVTERM_DIR/VERSION" 2>/dev/null || echo "?")
+        # Clear update notification cache
+        rm -f "\$HOME/.cache/devterm-update-check"
+        if [[ "\$old_ver" == "\$new_ver" ]]; then
+          echo "✓ devterm v\$new_ver — already up to date"
+        else
+          echo "✓ devterm updated: v\$old_ver → v\$new_ver"
+          echo "  Run 'devterm tips' to see what's new"
+        fi
+      else
+        echo "devterm not found at \$DEVTERM_DIR"
+      fi
+      ;;
+    version|-v|--version)
+      echo "devterm v\$(cat "\$DEVTERM_DIR/VERSION" 2>/dev/null || echo "unknown")"
+      ;;
+    help|"")
+      echo "Usage: devterm <command>"
+      echo ""
+      echo "Commands:"
+      echo "  tips      Show cheat sheet — what changed and how to use it"
+      echo "  doctor    Diagnose your devterm installation"
+      echo "  update    Pull latest devterm from GitHub"
+      echo "  version   Show installed version"
+      echo "  help      Show this help"
+      ;;
+    *)
+      echo "Unknown command: \$1 — run 'devterm help' for usage"
+      ;;
+  esac
+}
+
+# =============================================================================
 # Environment
 # =============================================================================
 export EDITOR="code"
@@ -203,5 +326,5 @@ fi
 ZSHRC_EOF
 
   log_ok "$HOME/.zshrc generated"
-  log_info "Customize: edit ~/.zshrc or run 'devterm --reconfigure'"
+  log_info "Customize: edit ~/.zshrc — run 'devterm tips' for cheat sheet"
 }

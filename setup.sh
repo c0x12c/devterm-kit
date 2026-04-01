@@ -11,7 +11,7 @@
 #   ./setup.sh --help           Show help
 # =============================================================================
 
-set -euo pipefail
+set -uo pipefail
 
 # Resolve project root (works even if called from different directories)
 DEVTERM_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -28,6 +28,7 @@ source "$DEVTERM_ROOT/lib/tools.sh"
 source "$DEVTERM_ROOT/lib/iterm2.sh"
 source "$DEVTERM_ROOT/lib/zshrc.sh"
 source "$DEVTERM_ROOT/lib/doctor.sh"
+source "$DEVTERM_ROOT/lib/tips.sh"
 
 # ── Defaults ───────────────────────────────────────────────────────────────
 DEVTERM_THEME="mocha"
@@ -54,12 +55,16 @@ parse_args() {
         doctor
         exit $?
         ;;
+      --tips|--cheatsheet)
+        show_tips
+        exit 0
+        ;;
       --help|-h)
         show_help
         exit 0
         ;;
       --version|-v)
-        echo "devterm v2.0.0"
+        echo "devterm v$(cat "$DEVTERM_ROOT/VERSION" 2>/dev/null || echo "unknown")"
         exit 0
         ;;
       *)
@@ -84,6 +89,7 @@ show_help() {
     --minimal            Install core only (skip CLI tools)
     --non-interactive    Skip all prompts, use defaults
     --doctor             Diagnose your devterm installation (no changes made)
+    --tips               Show cheat sheet: what changed and how to use it
     -h, --help           Show this help
     -v, --version        Show version
 
@@ -228,6 +234,23 @@ interactive_setup() {
   fi
 }
 
+# ── Step tracking ─────────────────────────────────────────────────────────
+STEP_NAMES=()
+STEP_RESULTS=()
+
+# Run a step and track pass/fail. Usage: run_step "Label" function_name
+run_step() {
+  local label="$1"
+  local fn="$2"
+  STEP_NAMES+=("$label")
+  if "$fn"; then
+    STEP_RESULTS+=("pass")
+  else
+    STEP_RESULTS+=("fail")
+    log_error "$label failed"
+  fi
+}
+
 # ── Main execution ─────────────────────────────────────────────────────────
 main() {
   parse_args "$@"
@@ -236,34 +259,78 @@ main() {
 
   local start_time=$SECONDS
 
-  # Run installation steps
-  detect_system
-  install_fonts
-  install_zsh
-  install_omz
-  install_starship
-  install_plugins
+  # Run installation steps — failures are tracked, not fatal
+  run_step "System detection"   detect_system
+  run_step "Fonts"              install_fonts
+  run_step "Zsh"                install_zsh
+  run_step "Oh My Zsh"          install_omz
+  run_step "Starship"           install_starship
+  run_step "Zsh plugins"        install_plugins
 
   if [[ "$DEVTERM_MODE" == "full" ]]; then
-    install_tools
+    run_step "CLI tools"        install_tools
   fi
 
-  # iTerm2 color scheme (macOS only)
   if [[ "$DEVTERM_OS" == "macos" ]]; then
-    install_iterm2_theme
+    run_step "iTerm2 theme"     install_iterm2_theme
   fi
 
-  generate_zshrc
+  run_step "Generate .zshrc"    generate_zshrc
 
   # ── Summary ──────────────────────────────────────────────────────────────
   local elapsed=$((SECONDS - start_time))
+  local fail_count=0
+  local i
+
+  for i in "${!STEP_RESULTS[@]}"; do
+    if [[ "${STEP_RESULTS[$i]}" == "fail" ]]; then
+      fail_count=$((fail_count + 1))
+    fi
+  done
+
   echo ""
-  echo -e "${MOCHA_GREEN}${BOLD}"
-  echo "  ╔══════════════════════════════════════════╗"
-  echo "  ║        ✅  Setup complete!               ║"
-  printf "  ║  Finished in %-28s║\n" "${elapsed}s"
-  echo "  ╚══════════════════════════════════════════╝"
-  echo -e "${NC}"
+  if [[ "$fail_count" -eq 0 ]]; then
+    echo -e "${MOCHA_GREEN}${BOLD}"
+    echo "  ╔══════════════════════════════════════════╗"
+    echo "  ║        Setup complete!                   ║"
+    printf "  ║  Finished in %-28s║\n" "${elapsed}s"
+    echo "  ╚══════════════════════════════════════════╝"
+    echo -e "${NC}"
+  else
+    echo -e "${MOCHA_YELLOW}${BOLD}"
+    echo "  ╔══════════════════════════════════════════╗"
+    printf "  ║  Setup finished with %-20s║\n" "$fail_count failure(s)"
+    printf "  ║  Finished in %-28s║\n" "${elapsed}s"
+    echo "  ╚══════════════════════════════════════════╝"
+    echo -e "${NC}"
+  fi
+
+  # Per-step results
+  echo -e "  ${BOLD}Results:${NC}"
+  for i in "${!STEP_NAMES[@]}"; do
+    if [[ "${STEP_RESULTS[$i]}" == "pass" ]]; then
+      echo -e "  ${MOCHA_GREEN}✓${NC} ${STEP_NAMES[$i]}"
+    else
+      echo -e "  ${MOCHA_RED}✗${NC} ${STEP_NAMES[$i]}"
+    fi
+  done
+  echo ""
+
+  if [[ "$fail_count" -gt 0 ]]; then
+    echo -e "  ${MOCHA_YELLOW}Some steps failed. Fix the issues above and re-run:${NC}"
+    echo -e "  ${BOLD}  ./setup.sh${NC}"
+    echo ""
+    return 1
+  fi
+
+  # Quick wins teaser
+  echo -e "  ${MOCHA_YELLOW}${BOLD}Quick wins — try these after reload:${NC}"
+  echo -e "    ${MOCHA_BLUE}ll${NC}             New ls with icons + git status"
+  echo -e "    ${MOCHA_BLUE}Ctrl+R${NC}         Fuzzy search your command history"
+  echo -e "    ${MOCHA_BLUE}cat any-file${NC}   Syntax highlighting + line numbers"
+  echo -e "    ${MOCHA_BLUE}z <keyword>${NC}    Smart cd — jump to any directory"
+  echo -e "    ${DIM}Full cheat sheet:  ${BOLD}devterm tips${NC}"
+  echo ""
 
   echo -e "  ${BOLD}Next steps:${NC}"
   echo ""
@@ -285,7 +352,7 @@ main() {
   fi
 
   echo ""
-  echo -e "  ${DIM}Tip: Run './setup.sh --doctor' anytime to check your environment.${NC}"
+  echo -e "  ${DIM}Tip: Run 'devterm tips' for a full cheat sheet, 'devterm doctor' to diagnose.${NC}"
   echo ""
 }
 
