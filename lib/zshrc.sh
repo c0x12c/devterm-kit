@@ -271,6 +271,40 @@ devterm() {
         echo "devterm not found at \$DEVTERM_DIR"
       fi
       ;;
+    restore)
+      local backups
+      backups=(\$(ls -t "\$HOME"/.zshrc.backup.* 2>/dev/null))
+      if [[ \${#backups[@]} -eq 0 ]]; then
+        echo "No backups found."
+        return 0
+      fi
+      echo "Available backups (newest first):"
+      echo ""
+      local i
+      for i in "\${!backups[@]}"; do
+        local ts=\$(echo "\${backups[\$i]}" | grep -o '[0-9]\\{8\\}_[0-9]\\{6\\}')
+        local d="\${ts:0:4}-\${ts:4:2}-\${ts:6:2} \${ts:9:2}:\${ts:11:2}"
+        local size=\$(wc -c < "\${backups[\$i]}" | tr -d ' ')
+        printf "  %d) %s  (%s bytes)\\n" \$((i + 1)) "\$d" "\$size"
+      done
+      echo ""
+      echo -n "Restore which backup? [1-\${#backups[@]}, or q to cancel]: "
+      local choice
+      read -r choice < /dev/tty
+      if [[ "\$choice" == "q" || -z "\$choice" ]]; then
+        echo "Cancelled."
+        return 0
+      fi
+      if [[ "\$choice" -ge 1 && "\$choice" -le \${#backups[@]} ]] 2>/dev/null; then
+        local selected="\${backups[\$((choice - 1))]}"
+        cp "\$HOME/.zshrc" "\$HOME/.zshrc.before-restore.\$(date +%Y%m%d_%H%M%S)"
+        cp "\$selected" "\$HOME/.zshrc"
+        echo "✓ Restored from \$selected"
+        echo "  Run 'source ~/.zshrc' or open a new terminal to apply."
+      else
+        echo "Invalid choice."
+      fi
+      ;;
     version|-v|--version)
       echo "devterm v\$(cat "\$DEVTERM_DIR/VERSION" 2>/dev/null || echo "unknown")"
       ;;
@@ -281,6 +315,7 @@ devterm() {
       echo "  tips      Show cheat sheet — what changed and how to use it"
       echo "  doctor    Diagnose your devterm installation"
       echo "  update    Pull latest devterm from GitHub"
+      echo "  restore   Restore your previous ~/.zshrc from backup"
       echo "  version   Show installed version"
       echo "  help      Show this help"
       ;;

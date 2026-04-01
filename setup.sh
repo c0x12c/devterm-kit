@@ -323,6 +323,15 @@ main() {
     return 1
   fi
 
+  # Backup notice
+  local latest_backup
+  latest_backup="$(ls -t "$HOME"/.zshrc.backup.* 2>/dev/null | head -1)"
+  if [[ -n "$latest_backup" ]]; then
+    echo -e "  ${MOCHA_BLUE}ℹ${NC}  Your previous ~/.zshrc was backed up."
+    echo -e "     Restore anytime: ${BOLD}devterm restore${NC}"
+    echo ""
+  fi
+
   # Quick wins teaser
   echo -e "  ${MOCHA_YELLOW}${BOLD}Quick wins — try these after reload:${NC}"
   echo -e "    ${MOCHA_BLUE}ll${NC}             New ls with icons + git status"
