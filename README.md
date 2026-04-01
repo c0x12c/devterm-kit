@@ -10,9 +10,9 @@
 [![Prompt: Starship](https://img.shields.io/badge/prompt-Starship-DD0B78.svg)](https://starship.rs/)
 [![CI](https://img.shields.io/github/actions/workflow/status/c0x12c/devterm-kit/ci.yml?label=CI)](https://github.com/c0x12c/devterm-kit/actions)
 
-<!-- Replace with your actual demo GIF: docs/demo.gif -->
-<!-- Generate one with: brew install vhs && vhs docs/demo.tape -->
-> 📸 _Demo GIF coming soon — install VHS and run `vhs docs/demo.tape` to generate_
+<p align="center">
+  <img src="docs/demo.gif" alt="devterm demo" width="800">
+</p>
 
 ---
 
