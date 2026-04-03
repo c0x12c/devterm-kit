@@ -69,6 +69,7 @@ chmod +x setup.sh
 | **eza** | Modern `ls` with icons & git status | ✓ |
 | **bat** | `cat` with syntax highlighting | ✓ |
 | **zoxide** | Smarter `cd` that learns your habits | ✓ |
+| **tmux / zellij** | Terminal multiplexer with Catppuccin theme (opt-in) | ✓ |
 
 **Safe to re-run** — every step checks if already installed and skips it.
 
@@ -89,18 +90,35 @@ The selected flavor is applied to both the Starship prompt config and the iTerm2
 
 ---
 
+## Multiplexer Support
+
+Optionally install a terminal multiplexer with Catppuccin Mocha theming pre-configured:
+
+```bash
+./setup.sh --multiplexer tmux      # tmux with Catppuccin Mocha colors (no TPM needed)
+./setup.sh --multiplexer zellij    # zellij with Catppuccin Mocha layout
+./setup.sh --multiplexer both      # install both
+```
+
+If you skip the `--multiplexer` flag, setup will ask interactively (default: skip).
+
+Both configs are deployed to standard locations (`~/.tmux.conf` / `~/.config/zellij/config.kdl`) and the doctor command checks their status.
+
+---
+
 ## Options
 
 ```
 ./setup.sh [OPTIONS]
 
-  --theme <variant>    Catppuccin variant: mocha (default), latte, frappe, macchiato
-  --minimal            Skip CLI tools (fzf, eza, bat, zoxide)
-  --non-interactive    No prompts, use defaults
-  --doctor             Check your devterm setup for issues
-  --tips               Show cheat sheet — what changed and how to use everything
-  -h, --help           Show help
-  -v, --version        Show version
+  --theme <variant>        Catppuccin variant: mocha (default), latte, frappe, macchiato
+  --multiplexer <choice>   Install terminal multiplexer: tmux, zellij, or both
+  --minimal                Skip CLI tools (fzf, eza, bat, zoxide)
+  --non-interactive        No prompts, use defaults
+  --doctor                 Check your devterm setup for issues
+  --tips                   Show cheat sheet — what changed and how to use everything
+  -h, --help               Show help
+  -v, --version            Show version
 ```
 
 ---
@@ -133,11 +151,33 @@ Font (MesloLGS NF) and color scheme (Catppuccin) are applied automatically to yo
 
 The Starship prompt is active immediately. Set your terminal font to `MesloLGS NF` manually. For the color theme, visit [catppuccin.com](https://github.com/catppuccin) and find your terminal emulator (Alacritty, Kitty, GNOME Terminal, etc.).
 
+**Customize your shell:** Type `zshrc` to open `~/.zshrc.local` — add your own aliases, exports, and functions there. devterm will never touch this file.
+
 ---
 
-## Generated `.zshrc` Highlights
+## Shell Configuration (3-file split)
 
-devterm generates an optimized `~/.zshrc` with these aliases pre-configured:
+devterm uses a 3-file architecture so your personal config is never overwritten:
+
+| File | Purpose | Editable? |
+|------|---------|-----------|
+| `~/.zshrc` | Thin loader — sources the other two files | No (managed) |
+| `~/.zshrc.devterm` | All devterm config (aliases, plugins, PATH) | No (regenerated each run) |
+| `~/.zshrc.local` | **Your personal config** — custom aliases, exports, anything | Yes — this is yours |
+
+**On first run**, if you already have a `.zshrc` with custom content, devterm moves it to `~/.zshrc.local` so nothing is lost.
+
+Edit your personal config anytime:
+```bash
+zshrc       # alias that opens ~/.zshrc.local in your $EDITOR
+reload      # re-source everything after changes
+```
+
+---
+
+## Aliases & Shortcuts
+
+devterm generates an optimized `~/.zshrc.devterm` with these aliases pre-configured:
 
 ```bash
 # Navigation (eza replaces ls)
@@ -161,11 +201,10 @@ j <name>    # jump to frequent directory (zoxide)
 ..          # cd ..
 ...         # cd ../..
 
-# Reload config
+# Shell config
+zshrc       # open ~/.zshrc.local in your editor
 reload      # source ~/.zshrc
 ```
-
-Your existing `~/.zshrc` is backed up to `~/.zshrc.backup.YYYYMMDD_HHMMSS` before any changes.
 
 ---
 
