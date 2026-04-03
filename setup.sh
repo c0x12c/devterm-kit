@@ -27,14 +27,16 @@ source "$DEVTERM_ROOT/lib/plugins.sh"
 source "$DEVTERM_ROOT/lib/tools.sh"
 source "$DEVTERM_ROOT/lib/iterm2.sh"
 source "$DEVTERM_ROOT/lib/zshrc.sh"
+source "$DEVTERM_ROOT/lib/multiplexer.sh"
 source "$DEVTERM_ROOT/lib/doctor.sh"
 source "$DEVTERM_ROOT/lib/tips.sh"
 
 # ── Defaults ───────────────────────────────────────────────────────────────
 DEVTERM_THEME="mocha"
-DEVTERM_MODE="full"     # full | minimal
+DEVTERM_MODE="full"         # full | minimal
 DEVTERM_NONINTERACTIVE=false
-DEVTERM_OS="macos"      # set by detect_system
+DEVTERM_OS="macos"          # set by detect_system
+DEVTERM_MULTIPLEXER=""      # tmux | zellij | both | "" (skip)
 
 # ── Argument parsing ───────────────────────────────────────────────────────
 parse_args() {
@@ -44,6 +46,14 @@ parse_args() {
         shift
         DEVTERM_THEME="${1:-mocha}"
         DEVTERM_NONINTERACTIVE=true
+        ;;
+      --multiplexer)
+        shift
+        DEVTERM_MULTIPLEXER="${1:-}"
+        if [[ "$DEVTERM_MULTIPLEXER" != "tmux" && "$DEVTERM_MULTIPLEXER" != "zellij" && "$DEVTERM_MULTIPLEXER" != "both" ]]; then
+          log_error "--multiplexer must be 'tmux', 'zellij', or 'both'"
+          exit 1
+        fi
         ;;
       --minimal)
         DEVTERM_MODE="minimal"
@@ -73,7 +83,7 @@ parse_args() {
     esac
     shift
   done
-  export DEVTERM_THEME DEVTERM_MODE DEVTERM_NONINTERACTIVE
+  export DEVTERM_THEME DEVTERM_MODE DEVTERM_NONINTERACTIVE DEVTERM_MULTIPLEXER
 }
 
 show_help() {
@@ -85,19 +95,21 @@ show_help() {
     ./setup.sh [OPTIONS]
 
   OPTIONS:
-    --theme <variant>    Set Catppuccin theme: mocha (default), latte, frappe, macchiato
-    --minimal            Install core only (skip CLI tools)
-    --non-interactive    Skip all prompts, use defaults
-    --doctor             Diagnose your devterm installation (no changes made)
-    --tips               Show cheat sheet: what changed and how to use it
-    -h, --help           Show this help
-    -v, --version        Show version
+    --theme <variant>          Set Catppuccin theme: mocha (default), latte, frappe, macchiato
+    --multiplexer <choice>     Install multiplexer: tmux, zellij, or both
+    --minimal                  Install core only (skip CLI tools and multiplexer)
+    --non-interactive          Skip all prompts, use defaults
+    --doctor                   Diagnose your devterm installation (no changes made)
+    --tips                     Show cheat sheet: what changed and how to use it
+    -h, --help                 Show this help
+    -v, --version              Show version
 
   EXAMPLES:
-    ./setup.sh                        # Interactive setup
-    ./setup.sh --theme macchiato      # Non-interactive, Macchiato theme
-    ./setup.sh --minimal --yes        # Minimal, no prompts
-    ./setup.sh --doctor               # Health check
+    ./setup.sh                            # Interactive setup
+    ./setup.sh --theme macchiato          # Non-interactive, Macchiato theme
+    ./setup.sh --multiplexer tmux         # Also install tmux with Catppuccin
+    ./setup.sh --minimal --yes            # Minimal, no prompts
+    ./setup.sh --doctor                   # Health check
 
   WHAT GETS INSTALLED:
     ✓ MesloLGS NF fonts (required for icons)
@@ -105,13 +117,16 @@ show_help() {
     ✓ Starship (fast, cross-shell prompt — Catppuccin themed)
     ✓ zsh-autosuggestions + zsh-syntax-highlighting
     ✓ Catppuccin color scheme for iTerm2 (macOS)
-    ✓ Optimized ~/.zshrc
+    ✓ Shell config (~/.zshrc + ~/.zshrc.devterm + ~/.zshrc.local)
 
     Full mode also installs:
     ✓ fzf   — fuzzy history search (Ctrl+R)
     ✓ eza   — modern ls with icons
     ✓ bat   — cat with syntax highlighting
     ✓ zoxide — smart cd navigation
+
+    With --multiplexer:
+    ✓ tmux and/or zellij with Catppuccin theme
 
   SUPPORTED PLATFORMS:
     ✓ macOS 12+ (Monterey and later)
@@ -213,6 +228,11 @@ interactive_setup() {
     pick_theme
   fi
 
+  # Multiplexer selection (interactive only, full mode only, no flag already set)
+  if [[ "$DEVTERM_NONINTERACTIVE" == "false" && "$DEVTERM_MODE" == "full" && -z "$DEVTERM_MULTIPLEXER" ]]; then
+    pick_multiplexer
+  fi
+
   echo ""
   echo -e "  ${MOCHA_MAUVE}${BOLD}Installation plan:${NC}"
   echo -e "  ${DIM}────────────────────────────────${NC}"
@@ -223,9 +243,12 @@ interactive_setup() {
   if [[ "$DEVTERM_OS" == "macos" ]]; then
     echo -e "  ${MOCHA_GREEN}✓${NC} Catppuccin $(_capitalize "$DEVTERM_THEME") for iTerm2"
   fi
-  echo -e "  ${MOCHA_GREEN}✓${NC} ~/.zshrc (existing backed up)"
+  echo -e "  ${MOCHA_GREEN}✓${NC} Shell config (~/.zshrc + ~/.zshrc.devterm)"
   if [[ "$DEVTERM_MODE" == "full" ]]; then
     echo -e "  ${MOCHA_GREEN}✓${NC} CLI tools: fzf, eza, bat, zoxide"
+  fi
+  if [[ -n "$DEVTERM_MULTIPLEXER" ]]; then
+    echo -e "  ${MOCHA_GREEN}✓${NC} Multiplexer: $DEVTERM_MULTIPLEXER"
   fi
   echo ""
 
@@ -271,11 +294,15 @@ main() {
     run_step "CLI tools"        install_tools
   fi
 
+  if [[ -n "$DEVTERM_MULTIPLEXER" ]]; then
+    run_step "Multiplexer"      install_multiplexer
+  fi
+
   if [[ "$DEVTERM_OS" == "macos" ]]; then
     run_step "iTerm2 theme"     install_iterm2_theme
   fi
 
-  run_step "Generate .zshrc"    generate_zshrc
+  run_step "Shell config"       generate_zshrc
 
   # ── Summary ──────────────────────────────────────────────────────────────
   local elapsed=$((SECONDS - start_time))
@@ -325,7 +352,7 @@ main() {
 
   # Backup notice
   local latest_backup
-  latest_backup="$(ls -t "$HOME"/.zshrc.backup.* 2>/dev/null | head -1)"
+  latest_backup="$(find "$HOME" -maxdepth 1 -name '.zshrc.backup.*' -print 2>/dev/null | sort -r | head -1)"
   if [[ -n "$latest_backup" ]]; then
     echo -e "  ${MOCHA_BLUE}ℹ${NC}  Your previous ~/.zshrc was backed up."
     echo -e "     Restore anytime: ${BOLD}devterm restore${NC}"
@@ -361,7 +388,9 @@ main() {
   fi
 
   echo ""
-  echo -e "  ${DIM}Tip: Run 'devterm tips' for a full cheat sheet, 'devterm doctor' to diagnose.${NC}"
+  echo ""
+  echo -e "  ${DIM}Config:  ~/.zshrc.local is yours — edit it for custom aliases and env vars.${NC}"
+  echo -e "  ${DIM}Tip:     Run 'devterm tips' for a full cheat sheet, 'devterm doctor' to diagnose.${NC}"
   echo ""
 }
 

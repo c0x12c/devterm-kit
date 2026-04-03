@@ -22,7 +22,8 @@ jobs:
           shellcheck install.sh setup.sh \
             lib/utils.sh lib/detect.sh lib/fonts.sh lib/shell.sh \
             lib/starship.sh lib/plugins.sh lib/tools.sh \
-            lib/iterm2.sh lib/zshrc.sh lib/doctor.sh
+            lib/iterm2.sh lib/zshrc.sh lib/multiplexer.sh lib/doctor.sh \
+            lib/tips.sh
           echo "✓ All scripts passed ShellCheck"
 
   syntax-check:
@@ -38,7 +39,8 @@ jobs:
             install.sh setup.sh
             lib/utils.sh lib/detect.sh lib/fonts.sh lib/shell.sh
             lib/starship.sh lib/plugins.sh lib/tools.sh
-            lib/iterm2.sh lib/zshrc.sh lib/doctor.sh
+            lib/iterm2.sh lib/zshrc.sh lib/multiplexer.sh lib/doctor.sh
+            lib/tips.sh
           )
           for f in "${SCRIPTS[@]}"; do
             bash -n "$f" && echo "✓ $f" || exit 1
@@ -90,6 +92,9 @@ jobs:
             "lib/iterm2.sh"
             "lib/zshrc.sh"
             "lib/doctor.sh"
+            "lib/multiplexer.sh"
+            "config/tmux.conf"
+            "config/zellij.kdl"
             "config/starship-mocha.toml"
             "config/starship-latte.toml"
             "config/starship-frappe.toml"
@@ -163,6 +168,9 @@ jobs:
 
       - name: Run unit tests — doctor
         run: bats tests/test_doctor.bats
+
+      - name: Run unit tests — multiplexer
+        run: bats tests/test_multiplexer.bats
 
       - name: Test summary
         if: always()
