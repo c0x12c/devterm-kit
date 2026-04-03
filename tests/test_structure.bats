@@ -67,6 +67,10 @@ load 'helpers/setup'
   assert_file_exists "$DEVTERM_ROOT/lib/doctor.sh"
 }
 
+@test "lib/multiplexer.sh exists" {
+  assert_file_exists "$DEVTERM_ROOT/lib/multiplexer.sh"
+}
+
 # ── Starship configs ───────────────────────────────────────────────────────
 
 @test "config/starship-mocha.toml exists" {
@@ -83,6 +87,14 @@ load 'helpers/setup'
 
 @test "config/starship-macchiato.toml exists" {
   assert_file_exists "$DEVTERM_ROOT/config/starship-macchiato.toml"
+}
+
+@test "config/tmux.conf exists" {
+  assert_file_exists "$DEVTERM_ROOT/config/tmux.conf"
+}
+
+@test "config/zellij.kdl exists" {
+  assert_file_exists "$DEVTERM_ROOT/config/zellij.kdl"
 }
 
 @test "each starship config declares its palette" {
@@ -163,6 +175,11 @@ load 'helpers/setup'
 
 @test "lib/iterm2.sh has valid bash syntax" {
   run bash -n "$DEVTERM_ROOT/lib/iterm2.sh"
+  assert_success
+}
+
+@test "lib/multiplexer.sh has valid bash syntax" {
+  run bash -n "$DEVTERM_ROOT/lib/multiplexer.sh"
   assert_success
 }
 

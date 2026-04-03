@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# tests/test_zshrc.bats — Tests for lib/zshrc.sh (.zshrc generation)
+# tests/test_zshrc.bats — Tests for lib/zshrc.sh (split .zshrc generation)
 
 load 'helpers/setup'
 
@@ -8,6 +8,7 @@ setup() {
   export DEVTERM_ROOT
   export DEVTERM_THEME="mocha"
   export DEVTERM_MODE="full"
+  export DEVTERM_OS="macos"
   source "$DEVTERM_ROOT/lib/utils.sh"
   source "$DEVTERM_ROOT/lib/zshrc.sh"
 }
@@ -16,138 +17,210 @@ teardown() {
   teardown_sandbox
 }
 
-# ── File creation ──────────────────────────────────────────────────────────
+# ── Scenario A: Fresh install ─────────────────────────────────────────────
 
-@test "generate_zshrc creates ~/.zshrc" {
+@test "scenario A — creates all 3 files on fresh install" {
   run generate_zshrc
   assert_success
   assert_file_exists "$HOME/.zshrc"
+  assert_file_exists "$HOME/.zshrc.devterm"
+  assert_file_exists "$HOME/.zshrc.local"
 }
 
-@test "generate_zshrc produces non-empty ~/.zshrc" {
+@test "scenario A — loader contains 'Managed by devterm' marker" {
   generate_zshrc
-  [[ -s "$HOME/.zshrc" ]] || { echo "~/.zshrc is empty"; return 1; }
+  assert_file_contains "$HOME/.zshrc" "Managed by devterm"
 }
 
-# ── Starship (not p10k) ────────────────────────────────────────────────────
-
-@test "generated .zshrc initialises Starship" {
+@test "scenario A — loader sources .zshrc.devterm" {
   generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "starship init zsh"
+  assert_file_contains "$HOME/.zshrc" ".zshrc.devterm"
 }
 
-@test "generated .zshrc does NOT reference powerlevel10k theme" {
+@test "scenario A — loader sources .zshrc.local" {
   generate_zshrc
-  run grep "powerlevel10k/powerlevel10k" "$HOME/.zshrc"
-  assert_failure
+  assert_file_contains "$HOME/.zshrc" ".zshrc.local"
 }
 
-@test "generated .zshrc sets ZSH_THEME to empty string" {
+@test "scenario A — .zshrc.local is a template (not empty)" {
   generate_zshrc
-  assert_file_contains "$HOME/.zshrc" 'ZSH_THEME=""'
+  [[ -s "$HOME/.zshrc.local" ]] || { echo "~/.zshrc.local is empty"; return 1; }
+  assert_file_contains "$HOME/.zshrc.local" "personal shell customizations"
 }
 
-# ── Required content ───────────────────────────────────────────────────────
+# ── Scenario B: Old monolithic devterm .zshrc ─────────────────────────────
 
-@test "generated .zshrc sources oh-my-zsh" {
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "oh-my-zsh.sh"
-}
-
-@test "generated .zshrc includes git aliases" {
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" 'alias gs='
-}
-
-@test "generated .zshrc includes eza aliases" {
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "eza"
-}
-
-@test "generated .zshrc includes Gradle aliases for Spartan stack" {
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "alias gwb="
-}
-
-@test "generated .zshrc sets EDITOR to code" {
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" 'EDITOR="code"'
-}
-
-@test "generated .zshrc exports HOME/.local/bin to PATH (Linux Starship support)" {
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" '/.local/bin'
-}
-
-@test "generated .zshrc includes fzf configuration" {
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "FZF_DEFAULT_OPTS"
-}
-
-# ── Platform conditionals (Linux vs macOS) ────────────────────────────────
-
-@test "generated .zshrc on macOS includes 'macos' OMZ plugin" {
-  export DEVTERM_OS="macos"
-  generate_zshrc
-  # The 'macos' OMZ plugin must appear as an indented entry in plugins=()
-  assert_file_contains "$HOME/.zshrc" "  macos"
-}
-
-@test "generated .zshrc on Linux excludes 'macos' OMZ plugin from plugins list" {
-  export DEVTERM_OS="linux"
-  generate_zshrc
-  # Grep for '  macos' as a plugin list entry — must NOT be present on Linux
-  run grep -E "^  macos$" "$HOME/.zshrc"
-  assert_failure
-}
-
-@test "generated .zshrc on Linux still has all required cross-platform plugins" {
-  export DEVTERM_OS="linux"
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "zsh-autosuggestions"
-  assert_file_contains "$HOME/.zshrc" "zsh-syntax-highlighting"
-  assert_file_contains "$HOME/.zshrc" "git"
-}
-
-@test "generated .zshrc wraps flush-dns alias in Darwin conditional" {
-  generate_zshrc
-  # flush-dns must be inside an OS guard — not a bare alias
-  assert_file_contains "$HOME/.zshrc" 'uname.*Darwin'
-  assert_file_contains "$HOME/.zshrc" "flush-dns"
-}
-
-@test "generated .zshrc OS label matches the set DEVTERM_OS" {
-  export DEVTERM_OS="linux"
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "OS: linux"
-}
-
-# ── Theme injection ────────────────────────────────────────────────────────
-
-@test "generated .zshrc reflects the selected theme name" {
-  DEVTERM_THEME="latte"
-  generate_zshrc
-  assert_file_contains "$HOME/.zshrc" "Latte"
-}
-
-# ── Backup behaviour ───────────────────────────────────────────────────────
-
-@test "generate_zshrc backs up existing ~/.zshrc before overwriting" {
-  echo "# old config" > "$HOME/.zshrc"
+@test "scenario B — backs up old monolithic .zshrc" {
+  echo "# Generated by devterm — old format" > "$HOME/.zshrc"
   generate_zshrc
   local backups=("$HOME"/.zshrc.backup.*)
   [[ ${#backups[@]} -ge 1 ]] || { echo "No backup created"; return 1; }
-  grep -q "# old config" "${backups[0]}" || { echo "Backup missing original content"; return 1; }
+  grep -q "Generated by devterm" "${backups[0]}" || { echo "Backup missing original content"; return 1; }
 }
 
-@test "generate_zshrc is idempotent — running twice yields identical output" {
+@test "scenario B — creates loader + local after migration" {
+  echo "# Generated by devterm — old format" > "$HOME/.zshrc"
   generate_zshrc
-  cp "$HOME/.zshrc" "$HOME/.zshrc.first"
+  assert_file_contains "$HOME/.zshrc" "Managed by devterm"
+  assert_file_exists "$HOME/.zshrc.local"
+  assert_file_exists "$HOME/.zshrc.devterm"
+}
+
+# ── Scenario C: Already migrated ──────────────────────────────────────────
+
+@test "scenario C — only regenerates .zshrc.devterm" {
+  # Set up already-migrated state
+  echo "# Managed by devterm" > "$HOME/.zshrc"
+  echo "# my custom stuff" > "$HOME/.zshrc.local"
+  echo "# old devterm config" > "$HOME/.zshrc.devterm"
 
   generate_zshrc
 
-  # diff is POSIX — available on macOS and Linux (no md5sum/md5 dependency)
-  diff "$HOME/.zshrc.first" "$HOME/.zshrc" || {
-    echo "Second run produced a different .zshrc"; return 1
+  # Loader must NOT be overwritten
+  assert_file_contains "$HOME/.zshrc" "Managed by devterm"
+  # .zshrc.local must NOT be overwritten
+  assert_file_contains "$HOME/.zshrc.local" "my custom stuff"
+  # .zshrc.devterm MUST be regenerated (new content)
+  assert_file_contains "$HOME/.zshrc.devterm" "starship init zsh"
+}
+
+# ── Scenario D: Non-devterm .zshrc ────────────────────────────────────────
+
+@test "scenario D — moves non-devterm .zshrc to .zshrc.local" {
+  echo "# my hand-crafted zshrc with custom stuff" > "$HOME/.zshrc"
+  generate_zshrc
+  # Original config should now be in .zshrc.local
+  assert_file_contains "$HOME/.zshrc.local" "hand-crafted"
+  # Loader should be installed
+  assert_file_contains "$HOME/.zshrc" "Managed by devterm"
+}
+
+@test "scenario D — does not clobber existing .zshrc.local" {
+  echo "# my hand-crafted zshrc" > "$HOME/.zshrc"
+  echo "# precious local config" > "$HOME/.zshrc.local"
+  generate_zshrc
+  # .zshrc.local must still have original content (not overwritten)
+  assert_file_contains "$HOME/.zshrc.local" "precious local config"
+  # The old .zshrc should be backed up instead
+  local backups=("$HOME"/.zshrc.backup.*)
+  [[ ${#backups[@]} -ge 1 ]] || { echo "No backup created"; return 1; }
+}
+
+# ── .zshrc.devterm content checks ─────────────────────────────────────────
+
+@test "generated .zshrc.devterm initialises Starship" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "starship init zsh"
+}
+
+@test "generated .zshrc.devterm does NOT reference powerlevel10k theme" {
+  generate_zshrc
+  run grep "powerlevel10k/powerlevel10k" "$HOME/.zshrc.devterm"
+  assert_failure
+}
+
+@test "generated .zshrc.devterm sets ZSH_THEME to empty string" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" 'ZSH_THEME=""'
+}
+
+@test "generated .zshrc.devterm sources oh-my-zsh" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "oh-my-zsh.sh"
+}
+
+@test "generated .zshrc.devterm includes git aliases" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" 'alias gs='
+}
+
+@test "generated .zshrc.devterm includes eza aliases" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "eza"
+}
+
+@test "generated .zshrc.devterm includes Gradle aliases for Spartan stack" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "alias gwb="
+}
+
+@test "generated .zshrc.devterm sets EDITOR to code" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" 'EDITOR="code"'
+}
+
+@test "generated .zshrc.devterm exports HOME/.local/bin to PATH" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" '/.local/bin'
+}
+
+@test "generated .zshrc.devterm includes fzf configuration" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "FZF_DEFAULT_OPTS"
+}
+
+@test "generated .zshrc.devterm points zshrc alias to .zshrc.local" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "zshrc.local"
+}
+
+# ── Platform conditionals ─────────────────────────────────────────────────
+
+@test "generated .zshrc.devterm on macOS includes 'macos' OMZ plugin" {
+  export DEVTERM_OS="macos"
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "  macos"
+}
+
+@test "generated .zshrc.devterm on Linux excludes 'macos' OMZ plugin" {
+  export DEVTERM_OS="linux"
+  generate_zshrc
+  run grep -E "^  macos$" "$HOME/.zshrc.devterm"
+  assert_failure
+}
+
+@test "generated .zshrc.devterm on Linux still has cross-platform plugins" {
+  export DEVTERM_OS="linux"
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "zsh-autosuggestions"
+  assert_file_contains "$HOME/.zshrc.devterm" "zsh-syntax-highlighting"
+  assert_file_contains "$HOME/.zshrc.devterm" "git"
+}
+
+@test "generated .zshrc.devterm wraps flush-dns in Darwin conditional" {
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" 'uname.*Darwin'
+  assert_file_contains "$HOME/.zshrc.devterm" "flush-dns"
+}
+
+@test "generated .zshrc.devterm OS label matches DEVTERM_OS" {
+  export DEVTERM_OS="linux"
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "OS: linux"
+}
+
+# ── Theme injection ───────────────────────────────────────────────────────
+
+@test "generated .zshrc.devterm reflects selected theme name" {
+  DEVTERM_THEME="latte"
+  generate_zshrc
+  assert_file_contains "$HOME/.zshrc.devterm" "Latte"
+}
+
+# ── Idempotency ───────────────────────────────────────────────────────────
+
+@test "generate_zshrc is idempotent — running twice yields identical .zshrc.devterm" {
+  generate_zshrc
+  cp "$HOME/.zshrc.devterm" "$HOME/.zshrc.devterm.first"
+
+  generate_zshrc
+
+  diff "$HOME/.zshrc.devterm.first" "$HOME/.zshrc.devterm" || {
+    echo "Second run produced a different .zshrc.devterm"; return 1
   }
+}
+
+@test "generate_zshrc does not produce empty .zshrc.devterm" {
+  generate_zshrc
+  [[ -s "$HOME/.zshrc.devterm" ]] || { echo "~/.zshrc.devterm is empty"; return 1; }
 }
