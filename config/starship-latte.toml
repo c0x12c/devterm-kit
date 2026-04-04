@@ -15,7 +15,6 @@ $directory\
 $git_branch\
 $git_status\
 [](fg:surface1 bg:surface2)\
-$c\
 $rust\
 $golang\
 $nodejs\
@@ -29,6 +28,7 @@ $time\
 $line_break\
 $character"""
 
+command_timeout = 1000
 add_newline = true
 
 [fill]
@@ -141,11 +141,7 @@ format         = "[ $symbol($version) ]($style)"
 detect_files   = ["Cargo.toml"]
 
 [c]
-symbol         = "  "
-style          = "bold fg:sapphire bg:surface2"
-format         = "[ $symbol($version(-$name)) ]($style)"
-detect_files      = ["CMakeLists.txt", "Makefile"]
-detect_extensions = []
+disabled = true
 
 [palettes.catppuccin_latte]
 rosewater = "#dc8a78"
